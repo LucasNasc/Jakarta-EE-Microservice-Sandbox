@@ -1,0 +1,11 @@
+scrape_configs:
+  - job_name: 'openliberty'
+
+    scheme: 'http'
+      # If you have authentication enabled on your server, you need to give the username and password
+      # Note that you can use <mpMetrics authentication='false'/> in your server.xml to disable authentication
+    tls_config:
+      insecure_skip_verify: true
+
+    static_configs:
+      - targets: ['localhost:9080']
