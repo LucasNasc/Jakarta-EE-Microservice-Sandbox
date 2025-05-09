@@ -21,13 +21,19 @@ async function loadTextractDocument(filePath: string): Promise<TextractDocument>
   return new TextractDocument(staticTestResponse);
 }
 
+interface Header {
+  matricula: string;
+  ficha: string;
+}
+
+
 /**
  * Extract headers from a page using vertical gap grouping
  */
-function extractHeadersFromPage(page: any): string[] {
-  const headers: string[] = [];
+function extractHeadersFromPage(page: Page): Record<string, any> {
+  const headers: Record<string, any>[] = [];
   const linesGrouped = page._groupLinesByVerticalGaps(0.2, 0.2).lines;
-
+  let content = "";
 
   linesGrouped.forEach((lineGroup: any, index: number) => {
     let header = "";
@@ -35,38 +41,33 @@ function extractHeadersFromPage(page: any): string[] {
     let ficha = "";
 
     lineGroup.forEach((line: any) => {
-
-      if (line.text.startsWith("Matr")) {
-        registry += line.text + "\n";
-      } else if (line.text.startsWith("Ficha") || line.text.startsWith("0")) {
-        ficha += line.text;
-      } else if (line.text.includes(".")) {
-        registry += line.text + "\n";
-      } else {
-        header += line.text + "\n"
+      if (index === 0) {
+        if (line.text.startsWith("Matr")) {
+          registry += line.text.replace("Matr", "").trim();
+        } else if (line.text.startsWith("Ficha") || line.text.startsWith("0")) {
+          ficha += line.text.replace("Ficha", "").trim();
+        } else if (/\d+\.\d+/.test(line.text)) {
+          registry += line.text;
+        } else {
+          header += line.text
+        }
+      }
+      if (line.text.trim().length > 50) {
+        content += line.text;
+      }
+      if (index > 0) {
+        content += line.text
       }
     });
 
-    header = registry + `\n` + ficha;
-    if (index === 0) headers.push(header);
-
-  });
-
-  return headers;
-}
-
-function extractContentFromPage(page: Page): string {
-
-  const linesGrouped = page.getLinesByLayoutArea();
-  let pageContent = "";
-  linesGrouped.content.forEach((line: any, index: number) => {
-    pageContent += line.text + "\n";
+    if (index === 0 && registry || ficha) headers.push({ registry, ficha });
 
 
   });
 
-  return pageContent;
+  return { headers, content }
 }
+
 
 /**
  * Process each page of the document to extract headers
@@ -78,11 +79,8 @@ async function processDocument(filePath: string) {
   pages.forEach((page, pageIndex) => {
     const headers = extractHeadersFromPage(page);
     console.log(`Headers for Page ${pageIndex + 1}:`);
-    console.log(headers.join("\n"));
-    console.log("--------------------");
-    const pageContent = extractContentFromPage(page);
-    console.log(`Content for Page ${pageIndex + 1}:`);
-    console.log(pageContent);
+    console.log(headers);
+
   });
 }
 
